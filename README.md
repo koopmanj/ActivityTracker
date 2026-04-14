@@ -11,6 +11,7 @@ A lightweight personal activity tracker for Windows that records active window u
 - **Daily HTML Report** -- Dark-themed report with hourly activity chart, application breakdown, timeline, and screenshot gallery
 - **Weekly HTML Report** -- Aggregated view of the last 7 days
 - **Weekly Work Report Prompt** -- Reusable AI prompt to generate a structured weekly work report from the tracker data
+- **Automated Weekly Report** -- Scheduled Monday 09:00 report generation via Claude Code CLI with Windows toast notification
 - **Auto-Start via Task Scheduler** -- Runs silently at logon with crash recovery
 
 ## Quick Start
@@ -57,8 +58,13 @@ ActivityTracker/
   report.py                 # HTML report generator (daily + weekly)
   start-tracker.bat         # Quick-start launcher
   view-report.bat           # Quick report viewer
-  setup-task.ps1            # Task Scheduler setup (auto-start + crash recovery)
-  weekly-report-prompt.md   # AI prompt for structured weekly work reports
+  report/                     # Personal weekly reports (git-ignored)
+    weekly-report-prompt.md   # AI prompt (personal copy with work streams)
+    weekly-work-report-*.md   # Generated weekly reports
+  setup-task.ps1              # Task Scheduler setup (auto-start + crash recovery)
+  setup-weekly-report-task.ps1  # Task Scheduler setup (weekly report)
+  generate-weekly-report.ps1  # Weekly report generator (collects data, calls Claude CLI)
+  weekly-report-prompt.md     # AI prompt template for weekly work reports (generic)
   README.md
 ```
 
@@ -129,19 +135,62 @@ A Windows Service runs in **Session 0** -- an isolated session with no desktop a
 2. Create a shortcut to `start-tracker.bat` in that folder
 3. Right-click the shortcut, go to Properties, set "Run" to **Minimized**
 
-## Weekly Work Report Generation
+## Weekly Work Report
 
-The file `weekly-report-prompt.md` contains a reusable AI prompt for generating a structured weekly work report from the tracker data. This is separate from the HTML weekly report -- it produces a narrative markdown document suitable for sharing with stakeholders.
+The weekly report generates a narrative markdown document from the tracker data, suitable for personal review or sharing with stakeholders. It uses Claude Code CLI to analyze the `summary.json` files and produce a structured report with work stream classification, meeting summaries, deliverables, and time investment analysis.
 
-### Usage
+### Automated (recommended)
+
+A scheduled task generates the report every Monday at 09:00 and shows a Windows toast notification when it's ready.
+
+**Setup (one-time):**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File setup-weekly-report-task.ps1
+```
+
+This registers a task named **ActivityTrackerWeeklyReport** that:
+
+1. Collects last week's `summary.json` files (Mon--Sun)
+2. Feeds them with the prompt template into Claude Code CLI (`claude -p`)
+3. Saves the output to `report/weekly-work-report-YYYY-WXX.md`
+4. Shows a clickable Windows toast notification
+
+If the laptop is off or asleep at 09:00, the task runs at next logon (`StartWhenAvailable`).
+
+**Managing the task:**
+
+```powershell
+# Run it now
+Start-ScheduledTask -TaskName "ActivityTrackerWeeklyReport"
+
+# Check status
+Get-ScheduledTask -TaskName "ActivityTrackerWeeklyReport" | Format-List
+
+# Remove
+Unregister-ScheduledTask -TaskName "ActivityTrackerWeeklyReport" -Confirm:$false
+```
+
+### Manual
+
+To generate a report manually or customize the prompt:
 
 1. Collect the `summary.json` files for each day of the target week from `data/`
 2. Paste the prompt from `weekly-report-prompt.md` into Claude or another AI assistant
 3. Attach or paste the `summary.json` contents for each day
 4. Optionally include `activity.jsonl` files for richer detail
-5. Save the output as `data/weekly-work-report-2026-WXX.md`
+5. Save the output to `report/weekly-work-report-YYYY-WXX.md`
 
-The prompt extracts work context from window titles (Teams chats, Confluence pages, Jira tickets, VS Code projects, etc.) and classifies activities into work streams.
+### Customizing work streams
+
+The generic prompt template (`weekly-report-prompt.md` in the repo root) has placeholder work streams. To customize for your role:
+
+1. Copy `weekly-report-prompt.md` to `report/weekly-report-prompt.md`
+2. Fill in the Author Context section with your details
+3. Define your work streams with relevant keywords
+4. The automated task reads from `report/weekly-report-prompt.md`
+
+The prompt extracts work context from window titles (Teams chats, Confluence pages, Jira tickets, VS Code projects, etc.) and classifies activities into your defined work streams.
 
 ## Privacy & Storage Notes
 
@@ -150,8 +199,16 @@ The prompt extracts work context from window titles (Teams chats, Confluence pag
 - Activity logs are typically <1 MB/day
 - Delete any day's data by removing its folder from `data/`
 
+## Scheduled Tasks Overview
+
+| Task | Schedule | Script | What it does |
+|---|---|---|---|
+| **ActivityTracker** | At logon | `setup-task.ps1` | Tracks windows, screenshots, saves daily data |
+| **ActivityTrackerWeeklyReport** | Monday 09:00 | `setup-weekly-report-task.ps1` | Generates weekly report via Claude Code CLI, sends toast notification |
+
 ## Requirements
 
 - Windows 10/11
 - Python 3.8+
-- Packages: `pillow`, `psutil`, `pywin32`, `mss`
+- Python packages: `pillow`, `psutil`, `pywin32`, `mss`
+- [Claude Code CLI](https://github.com/anthropics/claude-code) (for automated weekly reports)
