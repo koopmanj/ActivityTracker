@@ -1,6 +1,9 @@
 # Activity tracker data (screenshots, logs, reports)
 data/
 
+# Personal weekly reports
+report/
+
 # Python
 __pycache__/
 *.py[cod]

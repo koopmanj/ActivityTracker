@@ -4,7 +4,7 @@ Windows Activity Tracker
 Tracks active window usage, takes periodic screenshots, and logs all activity.
 Run this script to start tracking. Press Ctrl+C to stop.
 
-Data is stored in: ~/activity-tracker/data/YYYY-MM-DD/
+Data is stored in: ./data/YYYY-MM-DD/
 """
 
 import os
@@ -36,11 +36,11 @@ except ImportError:
 
 TRACKER_DIR = Path(__file__).parent
 DATA_DIR = TRACKER_DIR / "data"
-SCREENSHOT_INTERVAL_SECONDS = 300  # Screenshot every 5 minutes
+SCREENSHOT_INTERVAL_SECONDS = 120  # Screenshot every 2 minutes
 ACTIVITY_POLL_INTERVAL_SECONDS = 2  # Check active window every 2 seconds
 SCREENSHOT_QUALITY = 60  # JPEG quality (lower = smaller files)
 SCREENSHOT_SCALE = 0.5  # Scale screenshots to 50% size to save space
-IDLE_THRESHOLD_SECONDS = 300  # Consider idle after 5 minutes of no input
+IDLE_THRESHOLD_SECONDS = 600  # Consider idle after 10 minutes of no input
 
 # ─── Logging Setup ───────────────────────────────────────────────────────────
 
